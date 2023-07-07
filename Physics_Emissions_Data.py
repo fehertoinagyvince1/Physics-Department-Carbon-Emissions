@@ -123,20 +123,24 @@ def separating_years(df):
     
     # Create separate DataFrames for each group
     separate_dfs = []
+    separate_dfs_w_years = []
     for year in desired_years:
-        year_df = B_h_d_wyears[B_h_d_wyears['Date'].dt.year == year]
-        
-     
+        year_df = B_h_d_wyears[B_h_d_wyears['Date'].dt.year == year]        
+        separate_dfs_w_years.append(year_df)
         separate_dfs.append(year_df.drop(['Date'], axis =1))
-    return separate_dfs
+    return separate_dfs, separate_dfs_w_years
 
 #Creating the DataFrames separated into years
 
-B_h_d_separated = separating_years(Blackett_heating_data_original)
-B_e_d_separated = separating_years(Blackett_electricity_data_original)
-H_e_d_separated = separating_years(Huxley_electricity_data_original)
-H_h_d_separated = separating_years(Huxley_heating_data_original)
+B_h_d_separated = separating_years(Blackett_heating_data_original)[0]
+B_e_d_separated = separating_years(Blackett_electricity_data_original)[0]
+H_e_d_separated = separating_years(Huxley_electricity_data_original)[0]
+H_h_d_separated = separating_years(Huxley_heating_data_original)[0]
 
+B_h_d_separated_w_years = separating_years(Blackett_heating_data_original)[1]
+B_e_d_separated_w_years = separating_years(Blackett_electricity_data_original)[1]
+H_e_d_separated_w_years = separating_years(Huxley_electricity_data_original)[1]
+H_h_d_separated_w_years = separating_years(Huxley_heating_data_original)[1]
 
 
 
@@ -166,6 +170,7 @@ def time_frame(num_rows, num_columns, sample_size):
 
     Returns
     -------
+    
     df : DataFrame
         A DataFrame that contains information about the time elapsed from the 
         start of the data collection.
@@ -208,30 +213,6 @@ def time_frame_separate_years(num_columns, sample_size, desired_years,
         separate_dfs.append(df)
     return separate_dfs
 
-def dates_by_year(date_list):
-    """This function was created to extract the years analysed and find the
-    length of the year from the data   
-
-    Parameters
-    ----------
-    date_list : list of datetime.datetime objects
-        List of all the dates in the dataset.  
-
-    Returns
-    -------
-    year_lists : dict containg lists
-        Returns a dictionary of lists with the key being the years, and the 
-        entries of the list being the dates
-
-    """
-    year_lists = {}
-    for date in date_list:
-        year = date.year
-        if year not in year_lists:
-            year_lists[year] = []
-        year_lists[year].append(date)
-   
-    return year_lists
 
 
 
@@ -331,6 +312,31 @@ plt.show()
 #%%
 """The aim of this next section is to do all these plots for each individual year"""
 
+def dates_by_year(date_list):
+    """This function was created to extract the years analysed and find the
+    length of the year from the data   
+
+    Parameters
+    ----------
+    date_list : list of datetime.datetime objects
+        List of all the dates in the dataset.  
+
+    Returns
+    -------
+    year_lists : dict containg lists
+        Returns a dictionary of lists with the key being the years, and the 
+        entries of the list being the dates
+
+    """
+    year_lists = {}
+    for date in date_list:
+        year = date.year
+        if year not in year_lists:
+            year_lists[year] = []
+        year_lists[year].append(date)
+   
+    return year_lists
+
 #Creating the list of dates with the separeted dates, as the dates are the same, used an arbitrary one      
 separated_dates = dates_by_year(B_h_d_date)
 
@@ -355,6 +361,7 @@ def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, col
         The axis title
     color : string
         The desired color of the plot
+        
 
     Returns
     -------
@@ -366,7 +373,10 @@ def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, col
     else:
         color = "green"
     for i in range(0, len(list_of_data)):
+        plt.rcParams['axes.xmargin'] = 0
+        plt.rcParams['axes.ymargin'] = 0
         fig, ax  = plt.subplots()
+        
         df = list_of_data[i]        
         df2 = thirty_min_seperate_y[i]
         dates = separated_dates[2018+i]       
@@ -374,13 +384,16 @@ def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, col
         for x_col, y_col in zip(time_column_name, time_stamps):
             ax.plot(df2[x_col],df[y_col], '.',
                       color = color)
+        
         ax.set_title(title +" " + str(2018+i), fontsize = 15)
         ax.set_xlabel('Time elapsed from start (Days)',  fontsize = 13 )
         ax.set_ylabel(y_axis_name,  fontsize = 13)
+       
         ax2 = ax.twiny()
         ax2.tick_params(axis='x', which='both', bottom=False, top=True)
         ax2.plot(dates, df[0], '.', color = color)       
         ax2.set_xlabel('Date', fontsize = 13)
+        
         plt.show()
 
 #%%
@@ -447,6 +460,8 @@ def plotting_data_all_years(df, time_data, title, y_title, color= ''):
     fig,ax=plt.subplots()
 
     for x_col, y_col in zip( time_column_name,B_h_d_column_name):
+        plt.rcParams['axes.xmargin'] = 0
+        plt.rcParams['axes.ymargin'] = 0
         
         ax.plot(time_data[x_col], df[y_col], '.',
                  color = color)
@@ -490,7 +505,115 @@ plotting_data_all_years(h_e_d_filtered, thirty_min_sample,
 
 #%%
 
+"""This section is to plot the filtered data yearly, to see the seasonal
+ variation better, to decide if a seasonal or daily filtering would be better."""
+ 
+def filtering_years_separated(list_of_df, num_of_sigma):
+    for i in range(0, len(list_of_df)):
+        df = list_of_df[i]
+        df_filtered = filtering(df, num_of_sigma)
+        list_of_df[i] = df_filtered
+    return list_of_df
+
+#%%
+
+B_h_f_separated = filtering_years_separated(B_h_d_separated, 5)
+B_e_f_separated = filtering_years_separated(B_e_d_separated, 5)
+H_h_f_separated = filtering_years_separated(H_h_d_separated, 5)
+H_e_f_separated = filtering_years_separated(H_e_d_separated, 5)
+
+#%%
+data_ploting_separate_years(B_h_f_separated, B_h_d_date,
+                            'Blackett Heating', 'Total Heating Energy(kWh)')
+#%%
+data_ploting_separate_years(B_e_f_separated, B_e_d_date,
+                             'Blackett Electricity', 
+                             'Total Electrical Energy(kWh)', 'orange')   
+
+#%%
+data_ploting_separate_years(H_e_f_separated, H_e_d_date,
+                             'Huxley Electricity', 
+                             'Total Electrical Energy(kWh)', 'purple')
+#%%
+data_ploting_separate_years(H_h_f_separated, H_h_d_date,
+                            'Blackett Heating', 'Total Heating Energy(kWh)',
+                            'blue')   
+
+#%%%  
+
+"""Splitting the yearly data further down into months"""
+
+def dates_by_year_and_month(date_list):
+    """This function was created to extract the years analysed and find the
+    length of the year from the data   
+
+    Parameters
+    ----------
+    date_list : list of datetime.datetime objects
+        List of all the dates in the dataset.  
+
+    Returns
+    -------
+    year_lists : dict containing lists
+        Returns a dictionary of dictionaries with the key being the years, the 
+        entries of the outer dictionary being the months, and the entries of the
+        inner dictionaries being the dates.
+
+    """
+    year_month_lists = {}
+    for date in date_list:
+        year = date.year
+        month = date.month
+        if year not in year_month_lists:
+            year_month_lists[year] = {}
+        if month not in year_month_lists[year]:
+            year_month_lists[year][month] = []
+        year_month_lists[year][month].append(date)
+   
+    return year_month_lists
 
 
+
+separated_dates_months = dates_by_year(B_h_d_date)
+separated_dates_y_m = dates_by_year_and_month(B_h_d_date)
+
+h = separated_dates_y_m[2018]
+
+
+#%%
+
+
+
+
+def separate_into_months(separated_w_date):
+    df = {}
+    df_w_date = {}  
+    separated_dates = dates_by_year(B_h_d_date)    
+    separated_dates_y_m = dates_by_year_and_month(B_h_d_date)
+    for i in range(0,len(separated_w_date)):        
+        months = list(separated_dates_y_m[2018+i].keys()) # The years that are present in the data
+        length_of_months = list(len(lst) for
+                                lst in separated_dates_y_m[2018+i].values()) #The length of each month
+        thirty_min_seperate_m = time_frame_separate_years(
+            num_columns, 30, months, length_of_months)
+        df_w_date[2018+i] = {} 
+        df[2018+i] = {} 
+        for month in months:
+            month_df = separated_w_date[i]
+            [separated_w_date[i]['Date'].dt.month == month]  
+            a = month_df
+            month_no_date = month_df.drop(['Date'], axis = 1)   
+            #print (month_no_date)
+            df_w_date[2018+i][month] = []
+            df[2018+i][month] = []         
+            df_w_date[2018+i][month].append(month_df)            
+            df[2018+i][month].append(month_no_date)
+              
+    return  df, df_w_date
+    
+
+
+
+B_h_d_s_m = separate_into_months(B_h_d_separated_w_years)[0]
 
 
