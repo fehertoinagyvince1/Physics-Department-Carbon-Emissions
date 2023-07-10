@@ -7,8 +7,9 @@ Created on Tue Jul  4 22:54:32 2023
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-
-
+import matplotlib.dates as mdates
+from datetime import datetime
+import Data_mod as mod
 #Loading Data into a Pandas Data Frames
 
 Data_file_path = r"C:\Users\feher\OneDrive - Imperial College London\UROP 2023\Blackett_Huxley_Data.xlsx"
@@ -213,6 +214,9 @@ def time_frame_separate_years(num_columns, sample_size, desired_years,
         separate_dfs.append(df)
     return separate_dfs
 
+    
+
+
 
 
 
@@ -334,6 +338,7 @@ def dates_by_year(date_list):
         if year not in year_lists:
             year_lists[year] = []
         year_lists[year].append(date)
+        
    
     return year_lists
 
@@ -344,6 +349,7 @@ desired_years = list(separated_dates.keys()) # The years that are present in the
 length_of_years = list(len(lst) for lst in separated_dates.values()) #The length of each year
 thirty_min_seperate_y = time_frame_separate_years(
     num_columns, 30, desired_years, length_of_years)
+
 
 def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, color= ""):
     """
@@ -374,7 +380,7 @@ def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, col
         color = "green"
     for i in range(0, len(list_of_data)):
         plt.rcParams['axes.xmargin'] = 0
-        plt.rcParams['axes.ymargin'] = 0
+        
         fig, ax  = plt.subplots()
         
         df = list_of_data[i]        
@@ -395,6 +401,7 @@ def data_ploting_separate_years(list_of_data, date_data, title, y_axis_name, col
         ax2.set_xlabel('Date', fontsize = 13)
         
         plt.show()
+
 
 #%%
 """PLotting the data sets individually"""
@@ -461,7 +468,7 @@ def plotting_data_all_years(df, time_data, title, y_title, color= ''):
 
     for x_col, y_col in zip( time_column_name,B_h_d_column_name):
         plt.rcParams['axes.xmargin'] = 0
-        plt.rcParams['axes.ymargin'] = 0
+        
         
         ax.plot(time_data[x_col], df[y_col], '.',
                  color = color)
@@ -566,6 +573,7 @@ def dates_by_year_and_month(date_list):
         month = date.month
         if year not in year_month_lists:
             year_month_lists[year] = {}
+            
         if month not in year_month_lists[year]:
             year_month_lists[year][month] = []
         year_month_lists[year][month].append(date)
@@ -576,8 +584,11 @@ def dates_by_year_and_month(date_list):
 
 separated_dates_months = dates_by_year(B_h_d_date)
 separated_dates_y_m = dates_by_year_and_month(B_h_d_date)
+length_of_months = list(len(lst) for lst in separated_dates_y_m[2018].values())
+thirty_min_seperate_y_m = time_frame_separate_years(
+    num_columns, 30, desired_years, length_of_months)
 
-h = separated_dates_y_m[2018]
+
 
 
 #%%
@@ -585,28 +596,42 @@ h = separated_dates_y_m[2018]
 
 
 
-def separate_into_months(separated_w_date):
+def separate_into_months(separated_w_date, date_series):
+    """This function takes in a dataframe taht includes the date stamps
+    and creates two dictionaries, each seperating the data into months and
+    years, one with the date stamps removed, and one with no date stamps.
+    
+
+    Parameters
+    ----------
+    separated_w_date : DataFrame
+        The data with the date stamps.
+
+    Returns
+    -------
+    df : DataFrame
+        The modified DataFrame with no dates.
+    df_w_date :  DataFrame
+        The modified DataFrame with dates.
+
+    """
     df = {}
     df_w_date = {}  
-    separated_dates = dates_by_year(B_h_d_date)    
-    separated_dates_y_m = dates_by_year_and_month(B_h_d_date)
+        
+    separated_dates_y_m = dates_by_year_and_month(date_series)
     for i in range(0,len(separated_w_date)):        
         months = list(separated_dates_y_m[2018+i].keys()) # The years that are present in the data
-        length_of_months = list(len(lst) for
-                                lst in separated_dates_y_m[2018+i].values()) #The length of each month
-        thirty_min_seperate_m = time_frame_separate_years(
-            num_columns, 30, months, length_of_months)
         df_w_date[2018+i] = {} 
         df[2018+i] = {} 
         for month in months:
-            month_df = separated_w_date[i]
-            [separated_w_date[i]['Date'].dt.month == month]  
-            a = month_df
-            month_no_date = month_df.drop(['Date'], axis = 1)   
-            #print (month_no_date)
+            month_df = separated_w_date[i].loc[separated_w_date
+                                               [i]['Date'].dt.month == month]
+            month_no_date = month_df.drop(['Date'], axis=1)
+            
             df_w_date[2018+i][month] = []
-            df[2018+i][month] = []         
-            df_w_date[2018+i][month].append(month_df)            
+            df[2018+i][month] = []
+            
+            df_w_date[2018+i][month].append(month_df)
             df[2018+i][month].append(month_no_date)
               
     return  df, df_w_date
@@ -614,6 +639,180 @@ def separate_into_months(separated_w_date):
 
 
 
-B_h_d_s_m = separate_into_months(B_h_d_separated_w_years)[0]
+#%%
+def filtering_years_months_separated(dict_of_df, num_of_sigma):
+    """
+    This function filters the data for every month seperately
+
+    Parameters
+    ----------
+    dict_of_df : dict
+        The dictionary that includes the data that is broken down into years 
+        and months
+    num_of_sigma : float
+        The statistical error margain
+
+    Returns
+    -------
+    dict_of_df_2 : dict
+        The filtered dictionary
+
+    """
+    dict_of_df_2 = dict_of_df
+    for j in range(0, len(dict_of_df)):        
+        for i in range(1, len(dict_of_df[2018+j])):
+            df = dict_of_df[2018+j][i][0]
+            df_filtered = filtering(df, num_of_sigma)
+            dict_of_df[2018+j][i][0] = df_filtered
+    return  dict_of_df_2
+
+
+
+
+#%%
+def total_monthly_usage(dict_of_df_1):
+    """
+    This function sums the energy usage over a month
+
+    Parameters
+    ----------
+    dict_of_df_1 : dict
+        The dictionary that includes the data that is broken down into years 
+        and months       
+
+    Returns
+    -------
+    result_dict : dict
+        A dictionary that has a list associated with every month in every
+        year which includes the total energy usage over that month.
+
+    """
+    result_dict = {}
+    for year, months_dict in dict_of_df_1.items():
+        result_dict[year] = {}
+        for month, df in months_dict.items():
+            total_sum = df[0].sum().sum()  # Calculate the sum of the dataframe
+            result_dict[year][month] = total_sum
+    return result_dict
+
+
+
+def plot_monthly_total_yearly(total_data, title, y_axis):
+    for year, months_dict in total_data.items():
+        
+        
+        fig, ax = plt.subplots()
+        y_list = list(months_dict)
+        usage_list = [total_data[year][month]/1000 for month in y_list]
+        
+        # Convert month numbers to dates
+        month_dates = [mdates.datetime.datetime(year, month, 1) for month in y_list]
+        ax.grid()
+        ax.scatter(month_dates, usage_list, s=70,zorder=10)
+        
+
+        # Format x-axis as dates
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))  # Displays abbreviated month names
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.set_ylabel(y_axis, fontsize = 15)
+        ax.set_title(title + ' ' + str(year), fontsize = 17)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        
+        plt.show()
+        
+       
+        
+        
+B_h_d_s_m = separate_into_months(B_h_d_separated_w_years, B_h_d_date)[0]
+B_e_d_s_m = separate_into_months(B_e_d_separated_w_years,B_h_d_date)[0]
+
+H_h_d_s_m = separate_into_months(H_h_d_separated_w_years, B_h_d_date)[0]
+H_e_d_s_m = separate_into_months(H_e_d_separated_w_years, B_h_d_date)[0]
+
+
+ 
+
+B_h_s_m_f = filtering_years_months_separated(B_h_d_s_m, 5)
+B_e_s_m_f = filtering_years_months_separated(B_e_d_s_m, 5)
+H_h_s_m_f = filtering_years_months_separated(H_h_d_s_m, 5)
+H_e_s_m_f = filtering_years_months_separated(H_e_d_s_m, 5)
+
+B_h_m_t_f = total_monthly_usage(B_h_s_m_f)
+B_e_m_t_f = total_monthly_usage(B_e_s_m_f)
+H_h_m_t_f = total_monthly_usage(H_h_s_m_f)
+H_e_m_t_f = total_monthly_usage(H_e_s_m_f)
+
+#%%
+plot_monthly_total_yearly(B_h_m_t_f, 'Blackett Heating', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total_yearly(B_e_m_t_f, 'Blackett Electricity', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total_yearly(H_h_m_t_f, 'Huxley Heating', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total_yearly(H_e_m_t_f, 'Huxley Electricity', 'Monthly Usage (MWh)')
+
+
+
+
+#%%
+
+
+def plot_monthly_total(total_data, title, y_axis):
+    fig, ax = plt.subplots()
+    plt.rcParams['axes.xmargin'] = 0
+    ax.grid()
+    all_month_dates = []
+    all_usage_list = []
+    
+    for year, months_dict in total_data.items():
+        y_list = list(months_dict)
+        usage_list = [total_data[year][month]/1000 for month in y_list]
+        
+        # Convert month numbers to dates
+        month_dates = [datetime(year, month, 1) for month in y_list]
+        
+        all_month_dates.extend(month_dates)
+        all_usage_list.extend(usage_list)
+    
+    ax.plot(all_month_dates, all_usage_list, zorder=10, color='navy')
+
+    # Format x-axis as years
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))  # Displays the year
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+
+    ax.set_ylabel(y_axis, fontsize=15)
+    ax.set_title(title, fontsize=17)
+    ax.set_xlabel('Date', fontsize = 15)
+    ax.xaxis.set_label_coords(0.95,-0.015)
+    
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    
+    plt.show()
+        
+      
+
+#%%
+plot_monthly_total(B_h_m_t_f, 'Blackett Heating', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total(B_e_m_t_f, 'Blackett Electricity', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total(H_h_m_t_f, 'Huxley Heating', 'Monthly Usage (MWh)')
+#%%
+plot_monthly_total(H_e_m_t_f, 'Huxley Electricity', 'Monthly Usage (MWh)')
+
+
+        
+    
+
+
+        
+        
+    
+    
+
+
+
 
 
