@@ -10,13 +10,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
 from datetime import datetime
+
 class modifier:
     def __init__(self, original_data):
         self.original_data = original_data
-        self.data, self.date_data = self.set_first_row_as_labels()
-        self.separated_dates = self.dates_by_year()       
-        self.num_rows, self.num_columns = self.data.shape   
-        self.list_of_data = self.separating_years()[0]
+        self.data, self.df_date = self.set_first_row_as_labels()
+        self.data_w_dates = self.set_first_row_as_labels_with_years()
+        self.num_rows, self.num_columns = self.data.shape 
+        
     
     def set_first_row_as_labels(self):
         """ This function was created to make the column labels the time stamps,
@@ -35,17 +36,17 @@ class modifier:
     
         """
         # Extract the first row as the labels
-        self.df = self.original_data
-        labels = self.df.iloc[0]
+        df = self.original_data
+        labels = df.iloc[0]
     
         # Set the labels as the new index
-        self.df = self.df[1:]   
-        self.df.columns = labels
-        self.df_date = pd.to_datetime(self.df['Date']).dt.date
-        self.df = self.df.drop(['Site Group', 'Site', 'Monitoring Point', 'Type',
+        df = df[1:]   
+        df.columns = labels
+        df_date = pd.to_datetime(df['Date']).dt.date
+        df = df.drop(['Site Group', 'Site', 'Monitoring Point', 'Type',
                       'Unit of Measurement', 'Date'], axis = 1)
         """Could modify this to be customisable, or require this data structure"""
-        return self.df, self.df_date
+        return df, df_date
     
     
     def set_first_row_as_labels_with_years(self):
@@ -68,28 +69,28 @@ class modifier:
     
         """
         # Extract the first row as the labels
-        self.df_w_years = self.original_data 
-        labels = self.df_w_years.iloc[0]
+        df_w_dates = self.original_data
+        labels = df_w_dates .iloc[0]
     
         # Set the labels as the new index
-        self.df_w_years = self.df_w_years[1:]   
-        self.df_w_years.columns = labels
+        df_w_dates  = df_w_dates[1:]   
+        df_w_dates.columns = labels
         
-        self.df_w_years = self.df_w_years.drop(['Site Group', 'Site', 'Monitoring Point', 'Type',
+        df_w_dates = df_w_dates.drop(['Site Group', 'Site', 'Monitoring Point', 'Type',
                       'Unit of Measurement'], axis = 1, errors='ignore')
         #df = pd.to_datetime(df['Date']).dt.date
-        return self.df_w_years
+        return df_w_dates 
     
     
     """Creating DataFrames for the years seperately"""
     
+    def finding_dates(self):       
     
-    def finding_dates(self):        
-        
-        self.desired_years = list(self.separated_dates.keys()) # The years that are present in the data
-        self.length_of_years = list(len(lst) for lst in self.separated_dates.values()) #The length of each year
-        thirty_min_seperate_y = self.time_frame_separate_years(30)
-        return self.separated_dates, self.desired_years, self.length_of_years, thirty_min_seperate_y
+        self.separated_dates = self.dates_by_year()
+        self.desired_years = list(self.separated_dates.keys())
+        self.length_of_years = list(len(lst) for lst in self.separated_dates.values())
+        self.thirty_min_separate_y = self.time_frame_separate_years(30)
+        return self.separated_dates, self.desired_years, self.length_of_years, self.thirty_min_separate_y
     
     def separating_years(self):
         """This function was created to separate the DataFrames into years.
@@ -107,25 +108,29 @@ class modifier:
             Returns a list of DataFrames each corresponding to a calender year.
     
         """
-        self.set_first_row_as_labels_with_years()
-        print(self.df_w_years)
         
-    #Changing the Date given into datetime format, which enables a lot of functionality:
-        self.df_w_years['Date'] = pd.to_datetime(self.df_w_years['Date']) 
-            
-        # Group the DataFrame based on the 'Condition' column
-        desired_years = self.finding_dates().desired_years
+        
+        #Changing the Date given into datetime format, which enables a lot of functionality:
+        self.data_w_dates['Date'] = pd.to_datetime(self.data_w_dates['Date']) 
+    # Group the DataFrame based on the 'Condition' column
+        
+        dates_info = self.finding_dates()  # Store the result of finding_dates        
+        desired_years = self.desired_years
+        
         
         # Create separate DataFrames for each group
         separate_dfs = []
         separate_dfs_w_years = []
         for year in desired_years:
-            year_df = self.df_w_years[self.df_w_years['Date'].dt.year == year]        
+                     
+            year_df = self.data_w_dates[self.data_w_dates['Date'].dt.year == year]        
             separate_dfs_w_years.append(year_df)
             separate_dfs.append(year_df.drop(['Date'], axis =1))
+        self.separate_dfs = separate_dfs
+        self.separate_dfs_w_years = separate_dfs_w_years
         return separate_dfs, separate_dfs_w_years
     
-    def time_frame(self, sample_size):
+    def time_frame(self, sample_size, length = None):
         """
         
     
@@ -147,13 +152,16 @@ class modifier:
             start of the data collection.
     
         """
-        _time_frame_ = pd.DataFrame(index = range(self.num_rows), columns = range(self.num_columns))
-        for i in range(0, self.num_rows):
+        if length is None:
+            length = self.num_rows
+        
+        df = pd.DataFrame(index = range(length), columns = range(self.num_columns))
+        for i in range(0, length):
             for j in range(0, self.num_columns):
-                _time_frame_.at[i,j] = (j*sample_size + i*1440)/(60*24)
-        return _time_frame_
+                df.at[i,j] = (j*sample_size + i*1440)/(60*24)
+        return df
+    
     def time_frame_separate_years(self, sample_size):
-                                  
         """
         
     
@@ -176,10 +184,10 @@ class modifier:
             days.
     
         """
-        separate_dfs = []
-        for i, year in enumerate(self.finding_dates().desired_years):
-            length = self.finding_dates.length_of_years()[i] 
-            df = self.time_frame(length, self.num_columns, sample_size)   
+        separate_dfs = []        
+        for i, year in enumerate(self.desired_years):
+            self.length = self.length_of_years[i] 
+            df = self.time_frame(30,self.length)   
             separate_dfs.append(df)
         return separate_dfs
     
@@ -199,18 +207,16 @@ class modifier:
             entries of the list being the dates
     
         """
-        
         year_lists = {}
-        for date in self.date_data:
+        for date in self.df_date:
             year = date.year
             if year not in year_lists:
                 year_lists[year] = []
-            year_lists[year].append(date)
-            
+            year_lists[year].append(date)            
        
         return year_lists
     
-    def filtering(self, num_of_sigma):
+    def filtering(df, num_of_sigma):
         """
         This function was created to filter data according to the standard 
         deviation from the mean of the inputed DataFrame
@@ -229,24 +235,23 @@ class modifier:
             range are returned as Nan.
     
         """
-        
-        stackeddf = self.data.stack()
+        stackeddf = df.stack()
         mean = np.mean(stackeddf)
         sig = np.std(stackeddf)
-        condition1 = self.data >= mean + num_of_sigma*sig  
-        condition2 = self.data <= mean - num_of_sigma*sig
-        df1 = self.data.mask(condition1)
-        df1 = self.data.mask(condition2)
+        condition1 = df >= mean + num_of_sigma*sig  
+        condition2 = df <= mean - num_of_sigma*sig
+        df1 = df.mask(condition1)
+        df1 = df1.mask(condition2)
         return df1
     
     
     def filtering_years_separated(self, num_of_sigma):
-        self.filtered_list_of_data = self.list_of_data.copy()
-        for i in range(0, len(self.list_of_data)):
-            df = self.list_of_data[i]
+        list_of_df = self.separate_dfs
+        for i in range(0, len(list_of_df)):
+            df = list_of_df[i]
             df_filtered = self.filtering(df, num_of_sigma)
-            self.filtered_list_of_data[i] = df_filtered
-        return self.filtered_list_of_data
+            list_of_df[i] = df_filtered
+        return list_of_df
     
     
     def dates_by_year_and_month(date_list):
@@ -280,7 +285,7 @@ class modifier:
         return year_month_lists
     
     
-    def separate_into_months(self,separated_w_date, date_series):
+    def separate_into_months(self,):
         """This function takes in a dataframe taht includes the date stamps
         and creates two dictionaries, each seperating the data into months and
         years, one with the date stamps removed, and one with no date stamps.
@@ -299,6 +304,8 @@ class modifier:
             The modified DataFrame with dates.
     
         """
+        date_series = self.df_date
+        separated_w_date = self.separate_dfs_w_years
         df = {}
         df_w_date = {}  
             
@@ -346,7 +353,7 @@ class modifier:
         return result_dict
     
     
-    def filtering_years_months_separated(dict_of_df, num_of_sigma):
+    def filtering_years_months_separated(self,dict_of_df, num_of_sigma):
         """
         This function filters the data for every month seperately
     
@@ -368,6 +375,6 @@ class modifier:
         for j in range(0, len(dict_of_df)):        
             for i in range(1, len(dict_of_df[2018+j])):
                 df = dict_of_df[2018+j][i][0]
-                df_filtered = filtering(df, num_of_sigma)
+                df_filtered = self.filtering(df, num_of_sigma)
                 dict_of_df[2018+j][i][0] = df_filtered
         return  dict_of_df_2
