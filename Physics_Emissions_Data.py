@@ -11,6 +11,7 @@ import matplotlib.dates as mdates
 import datetime
 import mod 
 import plotting as vis
+#%%
 
 #Loading Data into a Pandas Data Frames
 
@@ -28,44 +29,12 @@ Huxley_electricity_data_original = pd.read_excel(Data_file_path, sheet_name= 'HX
 
 #%%
 
-#Creating the DataFrames that have the desired column labels
-
-Blackett_heating = mod.modifier(Blackett_heating_data_original)
-Blackett_electricity = mod.modifier(Blackett_electricity_data_original)
-Huxley_heating = mod.modifier(Huxley_heating_data_original)
-Huxley_electricity = mod.modifier(Huxley_electricity_data_original)
-
-#%%
-
-
-Blackett_heating_data, B_h_d_date = mod.set_first_row_as_labels(Blackett_heating_data_original)
-Blackett_electricity_data, B_e_d_date = mod.set_first_row_as_labels(Blackett_electricity_data_original)
-Huxley_heating_data, H_h_d_date = mod.set_first_row_as_labels(Huxley_heating_data_original)
-Huxley_electricity_data, H_e_d_date = mod.set_first_row_as_labels(Huxley_electricity_data_original) 
-
-#%%%
-"""To get an idea of the outliers, I will plot every value against the time 
-elapsed in days.To do this we will need to assign every point in the data frame 
-to a day"""
-#Creating a DataFrame representing the time for the whole DataFrame
-num_rows, num_columns = Blackett_electricity_data.shape
-thirty_min_sample = mod.time_frame(num_rows, num_columns, 30)         
-
-B_h_d_column_name = Blackett_heating_data.columns
-B_e_d_column_name = Blackett_electricity_data.columns
-H_h_d_column_name = Huxley_heating_data.columns
-H_e_d_column_name = Huxley_electricity_data.columns
-#To write functions to plot, and as the time stamps are the same create a general variable
-time_stamps = H_e_d_column_name
-time_column_name = thirty_min_sample.columns 
-
-
-#%% 
-"""Creating instances for the data sets"""
 Blackett_heating = vis.plotting(Blackett_heating_data_original)
+#%%
 Blackett_electricity = vis.plotting(Blackett_electricity_data_original)
 Huxley_heating = vis.plotting(Huxley_heating_data_original)
 Huxley_electricity = vis.plotting(Huxley_electricity_data_original)
+
 
 #%%
 """Plotting the raw data for all years"""
@@ -86,6 +55,7 @@ Huxley_electricity.plottingdata('Huxley Electricity',
 
 #%%
 """In this section I am plotting the unfiltered data for the years separetely"""
+
 Blackett_heating.data_ploting_separate_years('Blackett Heating',
                                              'Total Heating Energy(kWh)')
 #%%
